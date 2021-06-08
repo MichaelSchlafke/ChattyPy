@@ -27,10 +27,10 @@ print("socked created")
 
 def handle_client(client_socket, adress):
     #load history
-    #with open('history.txt','a') as text_file:
-        #history = text_file.read()
-        #history_b = bytes(history, 'utf-8')
-        #client_socket.sendmsg(history_b)
+    with open('history.txt','r') as text_file:
+        history = text_file.read()
+        history_b = bytes(history, 'utf-8')
+        client_socket.sendall(history_b)
     
         while True:
             # Warten auf Nachricht der Clientseite
