@@ -14,11 +14,33 @@ import _thread
 #from threading import Thread
 # Neuen Thread starten, recherchieren wie die Funktion runktioniert.
 
-host = '129.217.162.178'
-port = 12020#<INTEGER>
+#settings
+manual_set_ip = False
+
 #socket anlegen
 sock = socket.socket()
-sock.bind((host, port))
+
+#IP setting
+if manual_set_ip:
+    #user input defined
+    print("Input host IP adress:")
+    host_manual = input()
+    host = host_manual
+    print("Input port:")
+    port_manual = input()
+    sock.bind((host_manual, port_manual))
+else:
+    #auto selected
+    host_auto = socket.gethostbyname(socket.gethostname())
+    sock.bind((host_auto, 0))
+    port_auto = sock.getsockname()[1]
+    print("hosting at: " + str(host_auto) + ":" + str(port_auto))
+
+
+
+
+
+
 sock.listen(100)
 
 clients = set()
@@ -31,16 +53,16 @@ def handle_client(client_socket, adress):
         history = text_file.read()
         history_b = bytes(history, 'utf-8')
         client_socket.sendall(history_b)
-    
+
+        # Warten auf Nachricht der Clientseite
         while True:
-            # Warten auf Nachricht der Clientseite
-            while True:
-                #print(client_socket)
-                #print(adress)
-                #client_socket.
-                msg = client_socket.recv(1024).decode()+'\n'
-                if not msg:
-                                break
+            msg = client_socket.recv(1024).decode()+'\n'
+            if not msg:
+                            break
+            else:
+                if "@" in msg:
+                    print("command detected!")
+                    #add alliases
                 else:
                     # Ausgabe der Clientnachricht
                     now = datetime.now()
@@ -51,13 +73,10 @@ def handle_client(client_socket, adress):
                         text_file.write(msg + '\n')
                     # Weiterleitung der Nachricht an alle anderen clients
                     msg = bytes(msg, 'utf-8')
-                    #will nicht.
-                    #for i in range(len(adress)):
-                        #sock.sendto(msg,adress[i])
                     for c in clients:
                         c.sendall(msg)
-                        #print("send to " + str(c))
-                        
+                        #print("send to " + str(c)) #debugging
+                    
                 
 
 
@@ -71,18 +90,11 @@ while True:
     conn, addr_new = sock.accept()
     clients.add(conn)
     addr.append(addr_new)
-    #with conn:
-        #welcome_msg = bytes((str(addr[0]) + ' just joind the chat'), 'utf-8')
     print(addr[num_conn], ' just joind the chat')
-    #print(addr)
     num_conn += 1
-        #sock.sendall(welcome_msg)
+
     conn.send(b"Welcome to the Server.\n")
 
-        #thread erschaffen
+    #thread erschaffen
     _thread.start_new_thread(handle_client, (conn, addr_new))
 
-        #thread = Thread(target = handle_client, args = (conn, ))
-        #thread.start()
-
-        #handle_client(conn)
