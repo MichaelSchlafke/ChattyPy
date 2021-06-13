@@ -73,19 +73,45 @@ def handle_client(client_socket, adress):
                 else:
                     if "/" in msg:
                         if "/alias=" in msg:
-                            alias = msg[7:]
+                            alias_new = msg[7:]
+                            if alias == "anon":
+                                msg_conn = "A wild " + alias_new + " appears!\t"
+                            else:
+                                msg_conn = alias + " turned into " + alias_new + "!\t"
+                            alias = alias_new
                             alias = alias.replace('\n', '').replace('\r', '')
                             #connect alias to ip
                             identities[alias] = (client_socket)
+                            #print("current identities:\n" + str(identities))
                             msg_comm_resp = "[Name set to " + alias + "]"
-                            msg_conn = "A wild " + alias + " appears!\t"
+                            
                             for c in clients:
                                 c.sendall(bytes(msg_conn, 'utf-8'))
                             print("current users: \n" + str(identities))
+                        elif "/users" in msg:
+                            msg_comm_resp = "[currently online:]\n"
+                            for user in identities:
+                                msg_comm_resp += "\t" + user + "\n"
+                        elif "/help" in msg:
+                            msg_comm_resp = "[list of commands:]\n/alias=[name here]\tfor changing names\n/users\tfor list of current users\n"
                         client_socket.sendall(bytes(msg_comm_resp, 'utf-8'))
                     elif "@" in msg:
-                        print("command detected!")
+                        print("@ command detected!")
                         #add alliases
+                        for alias_other in identities:
+                            print("searching for @" + str(alias_other))
+                            if "@" + str(alias_other) in str(msg):
+                                #formulieren der Nachricht
+                                msg = msg.replace("@" + str(alias_other),"")
+                                now = datetime.now()
+                                current_time = now.strftime("%H:%M:%S")
+                                msg = (alias + " to "+ alias_other + ", " + current_time + ":\n" + msg)
+                                print(msg) 
+                                #send message
+                                msg = bytes(msg, 'utf-8')
+                                identities[alias_other].sendall(msg)
+
+
                     else:
                         # Ausgabe der Clientnachricht
                         now = datetime.now()
@@ -108,6 +134,7 @@ def handle_client(client_socket, adress):
         msg = (alias + " disconnected!")
         clients.remove(client_socket)
         client_socket.close()
+        identities.pop(alias)
         print(msg)
         for c in clients:
                 c.sendall(bytes(msg, 'utf-8'))
@@ -131,7 +158,7 @@ while True:
         #c.sendall(bytes(msg_conn, 'utf-8'))
     num_conn += 1
 
-    conn.send(b"Welcome to the Server.\n")
+    conn.send(b"Welcome to the Server.\nuse /help to see all commands")
 
     #thread erschaffen
     _thread.start_new_thread(handle_client, (conn, addr_new))
