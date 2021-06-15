@@ -134,7 +134,8 @@ def handle_client(client_socket, adress):
         msg = (alias + " disconnected!")
         clients.remove(client_socket)
         client_socket.close()
-        identities.pop(alias)
+        if alias != "anon":
+            identities.pop(alias)
         print(msg)
         for c in clients:
                 c.sendall(bytes(msg, 'utf-8'))
