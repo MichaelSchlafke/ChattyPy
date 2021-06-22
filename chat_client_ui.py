@@ -26,7 +26,7 @@ class Ui_MainWindow(object):
         self.SendButton = QtWidgets.QPushButton(self.centralwidget)
         self.SendButton.setGeometry(QtCore.QRect(720, 470, 61, 31))
         self.SendButton.setObjectName("SendButton")
-        self.UserList = QtWidgets.QListView(self.centralwidget)
+        self.UserList = QtWidgets.QTextBrowser(self.centralwidget)
         self.UserList.setGeometry(QtCore.QRect(20, 150, 141, 192))
         self.UserList.setObjectName("UserList")
         self.toggleLocalHost = QtWidgets.QCheckBox(self.centralwidget)

@@ -1,6 +1,6 @@
 from chat_client_ui import Ui_MainWindow # Hier wird das eigene Design geladen
 import sys
-from PyQt5 import QtWidgets,QtCore # Erforderliche QT Bibliotheken werden importiert!
+from PyQt5 import QtWidgets,QtCore,QtGui # Erforderliche QT Bibliotheken werden importiert!
 import socket
 import _thread
 import time
@@ -23,10 +23,10 @@ class Hauptfenster(QtWidgets.QMainWindow, Ui_MainWindow):
     #         #ADD DISCONNECT
     #         #_thread.start_new_thread(reconnect)
 
-    def __init__(self, parent = None):
+    def __init__(self, app, parent = None):
         super(Hauptfenster, self).__init__(parent)                      # Ausführen der __init__ der Elternklasse
         self.setupUi(self)                                              # Initialisierung des User Interface
-
+        self.app = app
 
         # History anlegen oder laden
         # Signals and Slots der einzelnen Elemente verbinden (Ein guter Anfang sind eine Sendebox und eine Anzeige für das Chatprotokoll)
@@ -52,20 +52,34 @@ class Hauptfenster(QtWidgets.QMainWindow, Ui_MainWindow):
         port = int(self.PortLine.text())
         alias = self.AliasLine.text()
         #connect
-        sock = socket.socket()
+        self.sock = socket.socket()
         print("connecting to " + str(host) + ":" + str(port))
-        sock.connect((host, port))
+        self.sock.connect((host, port))
         #send alias
         msg_sttgs = "/alias=" + alias
         msg_sttgs_byt = bytes(msg_sttgs, 'utf-8')
-        sock.send(msg_sttgs_byt)
+        self.sock.send(msg_sttgs_byt)
 
-        # Verbidnung mit dem Server aufbauen
+        #Verbidnung mit dem Server aufbauen
 
-        # Starten eines neuen Threads für den kontinuierlichen Empfang von Signalen. (QTCore.QThread sollte verwendet werden) -> dazu muss das receiver Signal aus der listener Klasse mit der Funktion print_message verbunden werden
-        # listener_recieve = listener()
-        # listener_recieve.__init__()
-        # listener_recieve.run(sock,self)
+        #Starten eines neuen Threads für den kontinuierlichen Empfang von Signalen. (QTCore.QThread sollte verwendet werden) -> dazu muss das receiver Signal aus der listener Klasse mit der Funktion print_message verbunden werden
+        listener_recieve = listener(self.sock,self,self.app)
+        #listener_recieve.__init__(sock,self)
+        #listener_recieve.run(sock,self)
+        listener_recieve.start()
+
+        updater_send = updater(self)
+        updater_send.start()
+
+        # bckgrd_thrd = BackgroundThread(listener_recieve,self.app)
+        # #bckgrd_thrd.__init__(listener_recieve)
+        # #bckgrd_thrd.run()
+        # bckgrd_thrd.start()
+
+        while True:
+            #time.sleep(1)
+            #print("still running")
+            self.app.processEvents()
 
         # # try:
         # #     while True:
@@ -83,6 +97,15 @@ class Hauptfenster(QtWidgets.QMainWindow, Ui_MainWindow):
         # #     print("connection lost")
         # #     #ADD DISCONNECT
         # #     #_thread.start_new_thread(reconnect)
+    def send_msg(self,msg_clt):
+        """
+        Diese Funktion sendet die Nachricht.
+
+        """
+        msg_clt_byt = bytes(msg_clt, 'utf-8')
+        #Senden der eingegebenen Daten
+        self.sock.send(msg_clt_byt)
+
 
     def on_sendButtonClicked(self):
         """
@@ -90,10 +113,9 @@ class Hauptfenster(QtWidgets.QMainWindow, Ui_MainWindow):
 
         """
         msg_clt = self.TextEingabe.toPlainText()
-        msg_clt_byt = bytes(msg_clt, 'utf-8')
-        #Senden der eingegebenen Daten
-        sock.send(msg_clt_byt)
+        self.send_msg(msg_clt)
         self.TextEingabe.clear()
+
 
     def print_message(self,msg):
         """
@@ -101,6 +123,8 @@ class Hauptfenster(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         # Implementierung.
         self.ChatText.append(msg)
+        ##app = QtWidgets.QApplication(sys.argv) #update UI
+        #self.app.processEvents()
 
 
     def on_disconnectButtonClicked(self):
@@ -108,49 +132,102 @@ class Hauptfenster(QtWidgets.QMainWindow, Ui_MainWindow):
         Diese Funktion wird aufgerufen, sobald der Disconnectknopf gedrückt wird.
 
         """
-
+        try:
+            self.sock.detach()
+            self.print_message("[successfully disconnected from server]")
+            self.sock = socket.socket()
+        except:
+            print("[critical error in disconnect!]")
+            self.print_message("[successfully disconnected from server]")
         #Implementierung.
 
     def on_helpButtonClicked(self):
         """
         Diese Funktion wird aufgerufen, sobald der Helpknopf gedrückt wird.
-
+        
         """
+        self.send_msg("/help")
+        #Implementierung.
 
-        #Implementierung.        
+    def on_user_change(self,user_list):
+        #self.UserList.clear()
+        self.UserList.append(user_list)
+        #self.UserList.setText(user_list)
 
 #Erstellen eines neuen Threads, indem von der QThread Klasse geerbt wird.  
 class listener(QtCore.QThread):
 
     receiver = QtCore.pyqtSignal(str) #Ein Signal erzeugen, welches einen 'str' übergeben kann. Namensgebung änderbar.
-    def __init__(self):
+    def __init__(self,sock_client,hauptfenster_,app):
         QtCore.QThread.__init__(self) # Konstruktor der Elternklasse
         self.exiting = False
-    def run(self,sock_client,hauptfenster):                
+        self.sock = sock_client
+        self.hauptfenster = hauptfenster_
+        self.app = app
+    def run(self):                
     # Implementieren der Empfangsschleife!
-        sock = sock_client
         try:
             while True:
-                msg = sock.recv(1024).decode()+'\n'
+                #app = QtWidgets.QApplication(sys.argv) #update UI
+                self.app.processEvents()
+                time.sleep(0.1)
+                msg = self.sock.recv(1024).decode()+'\n'
                 if msg:
-                    #text_field.append(msg)
-                    #time.sleep(0.1)
-                    #hauptfenster.print_message(msg)  #freezes GUI
-                    print(msg)
-                
-                
+                    time.sleep(0.1)
+                    #self.UserList
+                    #if "[" in msg and "]" in msg:
+                        #print("detected server message")
+                    if "[currently online:]" in msg:
+                        user_list = msg[20:].replace("\t","")
+                        self.hauptfenster.on_user_change(user_list)
+                    else:
+                        self.hauptfenster.print_message(msg)  #freezes GUI???
+                        print(msg)
+                #QtGui.QApplication.processEvents()  #existiert nicht
                 
         finally:
             print("connection lost")
             #ADD DISCONNECT
             #_thread.start_new_thread(reconnect)
 
+class updater(QtCore.QThread):
+    def __init__(self,hauptfenster_):
+        QtCore.QThread.__init__(self) # Konstruktor der Elternklasse
+        self.exiting = False
+        self.hauptfenster = hauptfenster_
+    def run(self):
+        try:
+            while True:
+                self.hauptfenster.send_msg("/users")
+                time.sleep(.5)
+        except:
+            print("critical error in update message")
+
+class BackgroundThread(QtCore.QThread):
+    '''Keeps the main loop responsive'''
+
+    def __init__(self, worker, app):
+        super(BackgroundThread, self).__init__()
+        self.exiting = False
+        self.worker = worker
+        self.app = app
+
+    def run(self):
+        '''This starts the thread on the start() call'''
+
+        #while self.worker.running:
+        while True:
+            #app = QtWidgets.QApplication(sys.argv)
+            self.app.processEvents()
+            print("Updating the main loop")
+            time.sleep(0.1)
 
 # main Funktion
 def main():
     app = QtWidgets.QApplication(sys.argv)
 
-    form = Hauptfenster()
+    form = Hauptfenster(app)
+
     form.show()
     sys.exit(app.exec_())
 

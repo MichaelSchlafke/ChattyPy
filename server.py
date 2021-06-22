@@ -74,6 +74,7 @@ def handle_client(client_socket, adress):
                     if "/" in msg:
                         if "/alias=" in msg:
                             alias_new = msg[7:]
+                            alias_new = alias_new.replace('\n', '').replace('\r', '')
                             if alias == "anon":
                                 msg_conn = "A wild " + alias_new + " appears!\t"
                             else:
@@ -138,7 +139,10 @@ def handle_client(client_socket, adress):
             identities.pop(alias)
         print(msg)
         for c in clients:
+            try:
                 c.sendall(bytes(msg, 'utf-8'))
+            except:
+                print("critical error when sending disconnect msg to user:" + str(c))
                     
                 
 
@@ -159,7 +163,7 @@ while True:
         #c.sendall(bytes(msg_conn, 'utf-8'))
     num_conn += 1
 
-    conn.send(b"Welcome to the Server.\nuse /help to see all commands")
+    conn.send(b"Welcome to the Server.\nuse /help to see all commands\n")
 
     #thread erschaffen
     _thread.start_new_thread(handle_client, (conn, addr_new))
