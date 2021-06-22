@@ -122,7 +122,11 @@ class Hauptfenster(QtWidgets.QMainWindow, Ui_MainWindow):
         Diese Funktion wird aufgerufen, sobald eine Nachricht empfangen wurde. Die Nachricht wird im Ausgabefenster angezeigt.  
         """
         # Implementierung.
-        self.ChatText.append(msg)
+        if "[currently online:]" in msg:
+                        user_list = msg[20:].replace("\t","")
+                        self.on_user_change(user_list)
+        else:
+            self.ChatText.append(msg)
         ##app = QtWidgets.QApplication(sys.argv) #update UI
         #self.app.processEvents()
 
@@ -173,16 +177,14 @@ class listener(QtCore.QThread):
                 time.sleep(0.1)
                 msg = self.sock.recv(1024).decode()+'\n'
                 if msg:
-                    time.sleep(0.1)
                     #self.UserList
                     #if "[" in msg and "]" in msg:
                         #print("detected server message")
-                    if "[currently online:]" in msg:
-                        user_list = msg[20:].replace("\t","")
-                        self.hauptfenster.on_user_change(user_list)
-                    else:
-                        self.hauptfenster.print_message(msg)  #freezes GUI???
-                        print(msg)
+                    
+                    #else:
+                        
+                    self.hauptfenster.print_message(msg)  #freezes GUI???
+                    print(msg)
                 #QtGui.QApplication.processEvents()  #existiert nicht
                 
         finally:
@@ -203,24 +205,24 @@ class updater(QtCore.QThread):
         except:
             print("critical error in update message")
 
-class BackgroundThread(QtCore.QThread):
-    '''Keeps the main loop responsive'''
+# class BackgroundThread(QtCore.QThread):
+#     '''Keeps the main loop responsive'''
 
-    def __init__(self, worker, app):
-        super(BackgroundThread, self).__init__()
-        self.exiting = False
-        self.worker = worker
-        self.app = app
+    # def __init__(self, worker, app):
+    #     super(BackgroundThread, self).__init__()
+    #     self.exiting = False
+    #     self.worker = worker
+    #     self.app = app
 
-    def run(self):
-        '''This starts the thread on the start() call'''
+    # def run(self):
+    #     '''This starts the thread on the start() call'''
 
-        #while self.worker.running:
-        while True:
-            #app = QtWidgets.QApplication(sys.argv)
-            self.app.processEvents()
-            print("Updating the main loop")
-            time.sleep(0.1)
+    #     #while self.worker.running:
+    #     while True:
+    #         #app = QtWidgets.QApplication(sys.argv)
+    #         self.app.processEvents()
+    #         print("Updating the main loop")
+    #         time.sleep(0.1)
 
 # main Funktion
 def main():
