@@ -11,6 +11,7 @@ import socket
 from datetime import datetime
 #from _thread import start_new_thread 
 import _thread
+import time
 #from threading import Thread
 # Neuen Thread starten, recherchieren wie die Funktion runktioniert.
 
@@ -62,9 +63,17 @@ def handle_client(client_socket, adress):
     try:
         with open('history.txt','r') as text_file:
             history = text_file.read()
+            history = "[history]" + history
             history_b = bytes(history, 'utf-8')
             client_socket.sendall(history_b)
-
+            #userlist
+            time.sleep(.5)
+            msg_users = "[currently online:]\n"
+            for user in identities:
+                msg_users += "\t" + user + "\n"
+            msg_users_b = bytes(msg_users, 'utf-8')
+            client_socket.sendall(msg_users_b)
+            time.sleep(.5)
             # Warten auf Nachricht der Clientseite
             while True:
                 msg = client_socket.recv(1024).decode()+'\n'
@@ -74,6 +83,7 @@ def handle_client(client_socket, adress):
                     if "/" in msg:
                         if "/alias=" in msg:
                             alias_new = msg[7:]
+                            alias_new = alias_new.replace('\n', '').replace('\r', '')
                             if alias == "anon":
                                 msg_conn = "A wild " + alias_new + " appears!\t"
                             else:
@@ -134,10 +144,14 @@ def handle_client(client_socket, adress):
         msg = (alias + " disconnected!")
         clients.remove(client_socket)
         client_socket.close()
-        identities.pop(alias)
+        if alias != "anon":
+            identities.pop(alias)
         print(msg)
         for c in clients:
+            try:
                 c.sendall(bytes(msg, 'utf-8'))
+            except:
+                print("critical error when sending disconnect msg to user:" + str(c))
                     
                 
 
@@ -158,7 +172,7 @@ while True:
         #c.sendall(bytes(msg_conn, 'utf-8'))
     num_conn += 1
 
-    conn.send(b"Welcome to the Server.\nuse /help to see all commands")
+    conn.send(b"Welcome to the Server.\nuse /help to see all commands\n")
 
     #thread erschaffen
     _thread.start_new_thread(handle_client, (conn, addr_new))
