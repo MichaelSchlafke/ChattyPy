@@ -11,6 +11,7 @@ import socket
 from datetime import datetime
 #from _thread import start_new_thread 
 import _thread
+import time
 #from threading import Thread
 # Neuen Thread starten, recherchieren wie die Funktion runktioniert.
 
@@ -64,7 +65,16 @@ def handle_client(client_socket, adress):
             history = text_file.read()
             history_b = bytes(history, 'utf-8')
             client_socket.sendall(history_b)
-
+            #userlist
+            time.sleep(.1)
+            client_socket.sendall(b"Welcome to the Server.\nuse /help to see all commands\n")
+            time.sleep(.1)
+            msg_users = "[currently online:]\n"
+            for user in identities:
+                msg_users += "\t" + user + "\n"
+            msg_users_b = bytes(msg_users, 'utf-8')
+            client_socket.sendall(msg_users_b)
+            time.sleep(.1)
             # Warten auf Nachricht der Clientseite
             while True:
                 msg = client_socket.recv(1024).decode()+'\n'
@@ -74,6 +84,7 @@ def handle_client(client_socket, adress):
                     if "/" in msg:
                         if "/alias=" in msg:
                             alias_new = msg[7:]
+                            alias_new = alias_new.replace('\n', '').replace('\r', '')
                             if alias == "anon":
                                 msg_conn = "A wild " + alias_new + " appears!\t"
                             else:
@@ -104,7 +115,7 @@ def handle_client(client_socket, adress):
                                 #formulieren der Nachricht
                                 msg = msg.replace("@" + str(alias_other),"")
                                 now = datetime.now()
-                                current_time = now.strftime("%H:%M:%S")
+                                current_time = now.strftime("%d.%m.%Y, %H:%M:%S")
                                 msg = (alias + " to "+ alias_other + ", " + current_time + ":\n" + msg)
                                 print(msg) 
                                 #send message
@@ -115,7 +126,7 @@ def handle_client(client_socket, adress):
                     else:
                         # Ausgabe der Clientnachricht
                         now = datetime.now()
-                        current_time = now.strftime("%H:%M:%S")
+                        current_time = now.strftime("%d.%m.%Y, %H:%M:%S")
                         msg = (alias + ", " + current_time + ":\n" + msg)
                         print(msg) 
                         with open('history.txt','a') as text_file:
@@ -130,14 +141,21 @@ def handle_client(client_socket, adress):
         #with open('error_log.txt','a') as text_file:
             #text_file.write("???" + '\n')
     except socket.error:
-        print("closing socket: " + str(client_socket))
-        msg = (alias + " disconnected!")
-        clients.remove(client_socket)
-        client_socket.close()
-        identities.pop(alias)
-        print(msg)
-        for c in clients:
-                c.sendall(bytes(msg, 'utf-8'))
+        try:
+            print("closing socket: " + str(client_socket))
+            msg = (alias + " disconnected!")
+            clients.remove(client_socket)
+            client_socket.close()
+            if alias != "anon":
+                identities.pop(alias)
+            print(msg)
+            for c in clients:
+                try:
+                    c.sendall(bytes(msg, 'utf-8'))
+                except:
+                    print("critical error when sending disconnect msg to user:" + str(c))
+        except:
+            print("fatal error on disconnect (look at set size?)")
                     
                 
 
@@ -154,11 +172,7 @@ while True:
     addr.append(addr_new)
     msg_conn = str(addr[num_conn]) + ' just joind the chat'
     print(msg_conn)
-    #for c in clients:
-        #c.sendall(bytes(msg_conn, 'utf-8'))
     num_conn += 1
-
-    conn.send(b"Welcome to the Server.\nuse /help to see all commands")
 
     #thread erschaffen
     _thread.start_new_thread(handle_client, (conn, addr_new))
